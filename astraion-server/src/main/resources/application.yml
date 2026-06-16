@@ -1,0 +1,32 @@
+server:
+  port: 8080
+
+spring:
+  application:
+    name: astraion
+  datasource:
+    url: jdbc:postgresql://localhost:5432/astraion
+    driver-class-name: org.postgresql.Driver
+    username: postgres
+    password: changeme
+    hikari:
+      maximum-pool-size: 10
+      minimum-idle: 2
+  jackson:
+    default-property-inclusion: non_null
+    serialization:
+      write-dates-as-timestamps: false
+
+astraion:
+  system-prompt: |
+    你是 ASTRAION 的 AI 业务助手。
+    你的工作是帮助用户通过对话管理所有业务数据。
+    
+    核心原则：
+    1. All in AI — 一切操作都通过你完成
+    2. 重要操作必须让用户确认
+    3. 根据数据量选择合适的展示方式
+    4. 永远不要泄露 API Key 和数据库密码
+    5. 检测用户权限，不在权限范围内的事不做
+    
+    当前用户信息会在每条消息上下文中提供。
