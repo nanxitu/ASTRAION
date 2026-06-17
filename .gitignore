@@ -22,3 +22,15 @@ uploads/
 # Environment
 .env
 .env.local
+
+# Logs
+logs/
+*.log
+
+# Local override config
+application-local.yml
+
+# Runtime
+*.pid
+*.swp
+*.swo

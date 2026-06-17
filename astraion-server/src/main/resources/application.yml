@@ -1,5 +1,16 @@
 server:
   port: 8080
+  servlet:
+    encoding:
+      charset: UTF-8
+      enabled: true
+      force: true
+
+logging:
+  file:
+    path: logs
+  level:
+    com.astraion: DEBUG
 
 spring:
   application:
@@ -8,7 +19,7 @@ spring:
     url: jdbc:postgresql://localhost:5432/astraion
     driver-class-name: org.postgresql.Driver
     username: postgres
-    password: changeme
+    password: ${DB_PASSWORD:changeme}    # ⚠️ 开源版：通过环境变量或application-local.yml覆盖
     hikari:
       maximum-pool-size: 10
       minimum-idle: 2

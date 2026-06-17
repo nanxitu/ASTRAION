@@ -93,6 +93,17 @@ public class DynamicTableManager {
         return name.startsWith("_") || "id".equals(name);
     }
 
+    /**
+     * 字段类型 → PostgreSQL 列类型映射。
+     *
+     * 设计原则：
+     * 1. 简单枚举（enum）用 VARCHAR，避免 JSONB 隐式转换陷阱；
+     *    如需复杂枚举值（对象/数组），显式用 json 类型
+     * 2. DATE / TIMESTAMP 列插入时需用 Java 时间对象（LocalDate/LocalDateTime），
+     *    或 SQL 端显式 CAST(? AS date)，不能传裸字符串
+     * 3. VARCHAR/TEXT 无长度限制差异时，< 255 用 VARCHAR，超长用 TEXT
+     * 4. JSONB 仅用于明确需要结构化数据的字段（json/enumMulti/relationMulti）
+     */
     private String mapToSqlType(FieldDef field) {
         return switch (field.getType()) {
             case "string"   -> "VARCHAR(" + (field.getMaxLength() != null ? field.getMaxLength() : 255) + ")";
@@ -105,7 +116,8 @@ public class DynamicTableManager {
             case "email", "phone", "url", "autoNumber" -> "VARCHAR(255)";
             case "encrypted", "password" -> "VARCHAR(512)";
             case "file", "image" -> "VARCHAR(1024)";
-            case "json", "enum", "enumMulti", "relationMulti" -> "JSONB";
+            case "enum"    -> "VARCHAR(255)";  // 简单枚举值，兼容纯字符串插入
+            case "json", "enumMulti", "relationMulti" -> "JSONB";  // 明确的结构化数据
             case "relation" -> "BIGINT";
             default -> "VARCHAR(255)";
         };

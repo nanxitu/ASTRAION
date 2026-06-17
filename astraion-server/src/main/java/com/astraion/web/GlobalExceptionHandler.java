@@ -4,6 +4,9 @@ import com.astraion.core.engine.CrudException;
 import com.astraion.core.metadata.MetadataException;
 import com.astraion.core.security.PermissionException;
 import com.astraion.model.ApiResponse;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+import org.springframework.dao.DataAccessException;
 import org.springframework.http.HttpStatus;
 import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.ResponseStatus;
@@ -39,9 +42,22 @@ public class GlobalExceptionHandler {
         return ApiResponse.fail(403, e.getMessage());
     }
 
+    private static final Logger log = LoggerFactory.getLogger(GlobalExceptionHandler.class);
+
+    /**
+     * 拦截所有数据库异常，绝不让 SQL 细节泄露到前端
+     */
+    @ExceptionHandler(DataAccessException.class)
+    @ResponseStatus(HttpStatus.INTERNAL_SERVER_ERROR)
+    public ApiResponse<Void> handleDataAccess(DataAccessException e) {
+        log.error("Database error", e);
+        return ApiResponse.fail(500, "数据操作失败，请稍后重试");
+    }
+
     @ExceptionHandler(Exception.class)
     @ResponseStatus(HttpStatus.INTERNAL_SERVER_ERROR)
     public ApiResponse<Void> handleGeneral(Exception e) {
-        return ApiResponse.fail(500, "服务器内部错误: " + e.getMessage());
+        log.error("Unhandled error", e);
+        return ApiResponse.fail(500, "服务器内部错误，请稍后重试");
     }
 }

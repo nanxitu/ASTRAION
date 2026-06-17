@@ -6,14 +6,17 @@ import com.astraion.core.metadata.MetadataEngine;
 import com.astraion.model.ModelMeta;
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.stereotype.Component;
-
 import java.util.*;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 /**
  * 查询数据工具 — queryData
  */
 @Component
 public class QueryDataTool implements AstraionTool {
+
+    private static final Logger log = LoggerFactory.getLogger(QueryDataTool.class);
 
     private final MetadataEngine metadataEngine;
     private final JdbcTemplate jdbcTemplate;
@@ -28,7 +31,7 @@ public class QueryDataTool implements AstraionTool {
 
     @Override
     public String getDescription() {
-        return "查询业务模型数据。支持筛选、排序、分页。适用于所有已创建的模型。";
+        return "查询数据。支持业务模型（如 department、employee）和系统表（user、role）。支持筛选、排序、分页。";
     }
 
     @Override
@@ -41,6 +44,9 @@ public class QueryDataTool implements AstraionTool {
         return schema;
     }
 
+    /** 允许通过 queryData 直接查询的系统表名 */
+    private static final Set<String> SYSTEM_TABLES = Set.of("user", "role");
+
     @Override
     public ToolResult execute(Map<String, Object> params, ToolContext ctx) {
         String modelName = (String) params.get("modelName");
@@ -48,8 +54,15 @@ public class QueryDataTool implements AstraionTool {
             return ToolResult.fail("Missing modelName");
         }
 
+        // 先查业务模型
         ModelMeta model = metadataEngine.getModel(modelName);
-        if (model == null) {
+        String tableName;
+
+        if (model != null) {
+            tableName = "astraion_data_" + modelName;
+        } else if (SYSTEM_TABLES.contains(modelName)) {
+            tableName = "astraion_" + modelName;
+        } else {
             return ToolResult.fail("模型不存在: " + modelName);
         }
 
@@ -65,21 +78,27 @@ public class QueryDataTool implements AstraionTool {
         }
 
         StringBuilder sql = new StringBuilder();
-        sql.append("SELECT * FROM astraion_data_").append(modelName);
+        sql.append("SELECT * FROM ").append(tableName);
         sql.append(" WHERE 1=1");
 
         if (!filter.isEmpty()) {
             sql.append(" AND ").append(filter);
         }
 
-        sql.append(" ORDER BY ").append(orderBy);
+        if (orderBy != null && !orderBy.isEmpty() && !orderBy.isBlank()) {
+            sql.append(" ORDER BY ").append(orderBy);
+        } else {
+            sql.append(" ORDER BY id");
+        }
         sql.append(" LIMIT ").append(limit);
 
         try {
             List<Map<String, Object>> rows = jdbcTemplate.queryForList(sql.toString());
             return ToolResult.ok("查询到 " + rows.size() + " 条记录", rows);
         } catch (Exception e) {
-            return ToolResult.fail("查询失败: " + e.getMessage());
+            log.warn("[QueryData] Failed for {} params={}: {}",
+                modelName, params.getOrDefault("filter",""), e.getMessage());
+            return ToolResult.fail("查询失败");
         }
     }
 }

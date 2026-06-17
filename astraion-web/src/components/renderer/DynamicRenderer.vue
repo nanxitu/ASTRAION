@@ -5,6 +5,7 @@ import FormView from './FormView.vue'
 import DetailView from './DetailView.vue'
 import ConfirmCard from './ConfirmCard.vue'
 import ApprovalCard from './ApprovalCard.vue'
+import CardView from './CardView.vue'
 
 const props = defineProps<{
   renderType: string
@@ -15,6 +16,8 @@ const component = computed(() => {
   switch (props.renderType) {
     case 'table':
       return TableView
+    case 'cards':
+      return CardView
     case 'form':
       return FormView
     case 'detail':

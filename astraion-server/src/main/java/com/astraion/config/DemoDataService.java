@@ -4,6 +4,8 @@ import com.astraion.core.engine.DynamicTableManager;
 import com.astraion.core.metadata.MetadataEngine;
 import com.astraion.model.FieldDef;
 import com.astraion.model.ModelMeta;
+import com.astraion.model.DisplayDef;
+import com.astraion.model.DisplayDef.*;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.jdbc.core.JdbcTemplate;
@@ -11,7 +13,6 @@ import org.springframework.stereotype.Component;
 
 import java.time.LocalDate;
 import java.time.LocalDateTime;
-import java.time.format.DateTimeFormatter;
 import java.util.*;
 
 /**
@@ -46,6 +47,9 @@ public class DemoDataService {
 
     /** 一键创建演示数据 */
     public Map<String, Object> loadDemoData() {
+        // 先清干净，确保没有残留状态（半成品模型/表）
+        clearDemoData();
+
         int modelCount = 0;
         int dataCount = 0;
 
@@ -71,6 +75,20 @@ public class DemoDataService {
             insertEmp("孙悦", dept4, "会计", "sunyue@company.com", "13800000009");
             insertEmp("马超", dept1, "后端工程师", "machao@company.com", "13800000010");
             dataCount += 10;
+
+            // ── 2.5 创建员工登录账号 ──
+            int userCount = 0;
+            userCount += insertUser("zhangwei", "张伟", "zhangwei@company.com", "123456", "user", dept1);
+            userCount += insertUser("liuyang",  "刘洋", "liuyang@company.com",  "123456", "user", dept1);
+            userCount += insertUser("chenmin",  "陈敏", "chenmin@company.com",  "123456", "user", dept1);
+            userCount += insertUser("lina",    "李娜", "lina@company.com",    "123456", "user", dept2);
+            userCount += insertUser("zhoujie", "周杰", "zhoujie@company.com", "123456", "user", dept2);
+            userCount += insertUser("wangfang","王芳", "wangfang@company.com","123456", "user", dept3);
+            userCount += insertUser("zhaolei", "赵磊", "zhaolei@company.com", "123456", "user", dept3);
+            userCount += insertUser("chenqiang","陈强","chenqiang@company.com","123456", "user", dept4);
+            userCount += insertUser("sunyue",  "孙悦", "sunyue@company.com",  "123456", "user", dept4);
+            userCount += insertUser("machao",  "马超", "machao@company.com",  "123456", "user", dept1);
+            modelCount += userCount;
 
             // ── 3. 请假申请 ──
             createLeaveRequestModel(); modelCount++;
@@ -120,7 +138,7 @@ public class DemoDataService {
 
         } catch (Exception e) {
             log.error("[Demo] Failed to create demo data", e);
-            return Map.of("success", false, "message", "创建演示数据失败: " + e.getMessage());
+            return Map.of("success", false, "message", "创建演示数据失败，请稍后重试");
         }
     }
 
@@ -162,19 +180,19 @@ public class DemoDataService {
                     fd("email", "email", "邮箱"),
                     fd("phone", "phone", "手机号"),
                     fd("hire_date", "date", "入职日期"),
-                    fd("status", "enum", "状态", false, null,
+                    fd("status", "string", "状态", false, null,
                         List.of("在职", "离职", "休假"))));
     }
 
     private void createLeaveRequestModel() {
         createModel("leave_request", "请假申请", "员工请假审批",
             List.of(fd("employee_id", "relation", "申请人", true, "employee"),
-                    fd("leave_type", "enum", "请假类型", true, null,
+                    fd("leave_type", "string", "请假类型", true, null,
                         List.of("年假", "事假", "病假", "婚假", "产假", "调休")),
                     fd("start_date", "date", "开始日期", true),
                     fd("end_date", "date", "结束日期", true),
                     fd("reason", "text", "请假理由"),
-                    fd("status", "enum", "审批状态", false, null,
+                    fd("status", "string", "审批状态", false, null,
                         List.of("pending", "approved", "rejected")),
                     fd("approval_comment", "text", "审批意见")));
     }
@@ -182,11 +200,11 @@ public class DemoDataService {
     private void createExpenseModel() {
         createModel("expense_report", "报销申请", "费用报销审批",
             List.of(fd("employee_id", "relation", "申请人", true, "employee"),
-                    fd("expense_type", "enum", "报销类型", true, null,
+                    fd("expense_type", "string", "报销类型", true, null,
                         List.of("差旅费", "招待费", "办公用品", "培训费", "交通费", "其他")),
                     fd("description", "text", "费用说明", true),
                     fd("amount", "decimal", "金额", true),
-                    fd("status", "enum", "审批状态", false, null,
+                    fd("status", "string", "审批状态", false, null,
                         List.of("pending", "approved", "rejected")),
                     fd("approval_comment", "text", "审批意见")));
     }
@@ -195,7 +213,7 @@ public class DemoDataService {
         createModel("announcement", "公告通知", "公司公告发布",
             List.of(fd("title", "string", "标题", true),
                     fd("content", "text", "内容", true),
-                    fd("level", "enum", "重要程度", false, null,
+                    fd("level", "string", "重要程度", false, null,
                         List.of("normal", "important", "urgent")),
                     fd("publisher", "string", "发布人"),
                     fd("publish_date", "datetime", "发布时间")));
@@ -224,26 +242,24 @@ public class DemoDataService {
     // ═══════════════ Data Insertion ═══════════════
 
     private Long insertDept(String name, String desc, String mgr) {
-        var rows = jdbcTemplate.queryForList(
-            "SELECT * FROM astraion_data_department WHERE name=?", name);
-        if (!rows.isEmpty()) return ((Number) rows.get(0).get("id")).longValue();
         jdbcTemplate.update(
             "INSERT INTO astraion_data_department (name, description, manager_name, employee_count) VALUES (?,?,?,?)",
             name, desc, mgr, 0);
-        return jdbcTemplate.queryForObject("SELECT LASTVAL()", Long.class);
+        Long id = jdbcTemplate.queryForObject("SELECT LASTVAL()", Long.class);
+        return id;
     }
 
     private void insertEmp(String name, Long deptId, String pos, String email, String phone) {
         jdbcTemplate.update(
             "INSERT INTO astraion_data_employee (name, dept_id, position, email, phone, hire_date, status) " +
-            "VALUES (?,?,?,?,?,?,?) ON CONFLICT DO NOTHING",
+            "VALUES (?,?,?,?,?,?::date,?)",
             name, deptId, pos, email, phone, "2025-03-01", "在职");
     }
 
     private void insertLeave(Long empId, String type, String start, String end, String status, String comment) {
         jdbcTemplate.update(
             "INSERT INTO astraion_data_leave_request (employee_id, leave_type, start_date, end_date, reason, status, approval_comment) " +
-            "VALUES (?,?,?,?,?,?,?)",
+            "VALUES (?,?,?::date,?::date,?,?,?)",
             empId, type, start, end, type + "申请", status, comment);
     }
 
@@ -257,7 +273,7 @@ public class DemoDataService {
     private void insertAnnounce(String title, String content, String level, String publisher) {
         jdbcTemplate.update(
             "INSERT INTO astraion_data_announcement (title, content, level, publisher, publish_date) VALUES (?,?,?,?,?)",
-            title, content, level, publisher, LocalDateTime.now().format(DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss")));
+            title, content, level, publisher, LocalDateTime.now());
     }
 
     private void insertRoom(String code, String type, int cap, String loc, String fac) {
@@ -269,17 +285,34 @@ public class DemoDataService {
     private void insertBooking(Long roomId, Long empId, String title, String date, String start, String end, String org) {
         jdbcTemplate.update(
             "INSERT INTO astraion_data_meeting_booking (room_id, employee_id, title, meeting_date, start_time, end_time, organizer) " +
-            "VALUES (?,?,?,?,?,?,?)",
+            "VALUES (?,?,?,?::date,?,?,?)",
             roomId, empId, title, date, start, end, org);
     }
 
     // ═══════════════ Helpers ═══════════════
 
-    private void createModel(String name, String display, String desc, List<FieldDef> fields) {
+    /** 创建用户账号（重复用户名跳过） */
+    private int insertUser(String username, String displayName, String email, String password, String role, Long deptId) {
         try {
-            metadataEngine.getModel(name); // already exists
-            return;
-        } catch (Exception ignored) {}
+            var rows = jdbcTemplate.queryForList(
+                "SELECT id FROM astraion_user WHERE username=?", username);
+            if (!rows.isEmpty()) return 0;
+            jdbcTemplate.update(
+                "INSERT INTO astraion_user (username, password_hash, display_name, email, role, dept_id, status) " +
+                "VALUES (?,?,?,?,?,?,'active')",
+                username, password, displayName, email, role, deptId);
+            return 1;
+        } catch (Exception e) {
+            log.warn("[Demo] Skip user {}: {}", username, e.getMessage());
+            return 0;
+        }
+    }
+
+    private void createModel(String name, String display, String desc, List<FieldDef> fields) {
+        // 清除阶段已删除所有模型，这里一定是首次创建
+        // 但如果模型侥幸残留（清除失败），跳过创建即可
+        if (tableManager.tableExists(name)) return;
+
         ModelMeta meta = new ModelMeta();
         meta.setModelName(name);
         meta.setDisplayName(display);
@@ -290,9 +323,37 @@ public class DemoDataService {
             fields.get(i).setOrder(i + 1);
         }
         meta.setFields(fields);
+
+        // 默认卡片显示配置
+        DisplayDef dd = buildDemoDisplay(name, fields);
+        if (dd != null) meta.setDisplay(dd);
+
         metadataEngine.createModel(meta);
         tableManager.createTable(meta);
         log.info("[Demo] Model created: {}", name);
+    }
+
+    /** 演示模型默认卡片展示配置 */
+    private static DisplayDef buildDemoDisplay(String name, List<FieldDef> fields) {
+        List<String> visibleFields = new ArrayList<>();
+        for (FieldDef f : fields) {
+            if (visibleFields.size() < 4) {
+                visibleFields.add(f.getName());
+            }
+        }
+
+        String titleField = fields.isEmpty() ? null : fields.get(0).getName();
+
+        DisplayDef.CardsView cards = DisplayDef.CardsView.builder()
+            .titleField(titleField)
+            .fields(visibleFields)
+            .actions(List.of(
+                DisplayDef.CardAction.builder().label("编辑").tool("updateData").variant("primary").build(),
+                DisplayDef.CardAction.builder().label("删除").tool("deleteData").variant("danger").build()
+            ))
+            .build();
+
+        return DisplayDef.builder().cards(cards).build();
     }
 
     private FieldDef fd(String name, String type, String label) {

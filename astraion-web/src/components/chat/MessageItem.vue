@@ -59,7 +59,7 @@ const hasRenderData = computed(() => !!props.message.renderData)
 
       <!-- Text content -->
       <template v-else>
-        <div class="message-text" v-html="message.content"></div>
+        <div class="message-text formatted-content" v-html="message.content"></div>
       </template>
     </div>
   </div>
@@ -173,5 +173,52 @@ const hasRenderData = computed(() => !!props.message.renderData)
   color: var(--text-primary);
   white-space: pre-wrap;
   word-break: break-word;
+}
+
+/* 用户消息 — 暖金琥珀 */
+.message-user .message-text {
+  color: #E8B830;
+}
+
+/* AI 消息 — 星辰冷蓝 */
+.message-ai .message-text {
+  color: #A8C8FF;
+}
+
+/* HTML 表格、标题等富文本样式 */
+.formatted-content :deep(table) {
+  width: 100%;
+  border-collapse: collapse;
+  margin: 8px 0 12px;
+  font-size: 0.85rem;
+}
+
+.formatted-content :deep(th),
+.formatted-content :deep(td) {
+  padding: 6px 12px;
+  text-align: left;
+  border: 1px solid var(--border-color);
+}
+
+.formatted-content :deep(th) {
+  background: var(--bg-tertiary);
+  font-weight: 600;
+  color: var(--text-secondary);
+}
+
+.formatted-content :deep(tr:nth-child(even)) {
+  background: rgba(255, 255, 255, 0.02);
+}
+
+.formatted-content :deep(h3), .formatted-content :deep(h4) {
+  margin: 12px 0 4px;
+  color: var(--accent-primary);
+}
+
+.formatted-content :deep(code) {
+  background: var(--bg-tertiary);
+  padding: 1px 5px;
+  border-radius: 3px;
+  font-size: 0.82rem;
 }
 </style>

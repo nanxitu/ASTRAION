@@ -30,16 +30,16 @@ export const useAuthStore = defineStore('auth', () => {
 
   function saveSession() {
     if (token.value) {
-      localStorage.setItem('astraion_token', token.value)
-      localStorage.setItem('astraion_user', JSON.stringify(user.value))
-      localStorage.setItem('astraion_initialized', String(initialized.value))
+      sessionStorage.setItem('astraion_token', token.value)
+      sessionStorage.setItem('astraion_user', JSON.stringify(user.value))
+      sessionStorage.setItem('astraion_initialized', String(initialized.value))
     }
   }
 
   function restoreSession() {
-    const savedToken = localStorage.getItem('astraion_token')
-    const savedUser = localStorage.getItem('astraion_user')
-    const savedInit = localStorage.getItem('astraion_initialized')
+    const savedToken = sessionStorage.getItem('astraion_token')
+    const savedUser = sessionStorage.getItem('astraion_user')
+    const savedInit = sessionStorage.getItem('astraion_initialized')
     if (savedToken && savedUser) {
       token.value = savedToken
       try {
@@ -56,9 +56,9 @@ export const useAuthStore = defineStore('auth', () => {
     token.value = null
     user.value = null
     initialized.value = false
-    localStorage.removeItem('astraion_token')
-    localStorage.removeItem('astraion_user')
-    localStorage.removeItem('astraion_initialized')
+    sessionStorage.removeItem('astraion_token')
+    sessionStorage.removeItem('astraion_user')
+    sessionStorage.removeItem('astraion_initialized')
   }
 
   async function login(username: string, password: string): Promise<LoginResponse> {
